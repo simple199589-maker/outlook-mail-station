@@ -43,6 +43,32 @@ outlook-mail-station/
 
 下面按顺序执行即可。
 
+### 推荐：一键部署
+
+如果你不想手动准备 `.env`、`data/`、`docker-compose.ghcr.yml`，可以直接运行仓库里的脚本。
+
+Linux / macOS：
+
+```bash
+bash deploy_ghcr.sh
+```
+
+Windows PowerShell 7：
+
+```powershell
+.\deploy_ghcr.ps1
+```
+
+脚本会自动完成：
+
+1. 创建 `data/`
+2. 自动生成 `.env`
+3. 自动生成 `docker-compose.ghcr.yml`
+4. 拉取 `ghcr.io/simple199589-maker/outlook-mail-station:latest`
+5. 执行 `docker compose -f docker-compose.ghcr.yml up -d`
+
+如果目录里已经有 `.env` 或 `docker-compose.ghcr.yml`，脚本默认复用，不会覆盖。
+
 ### 第 1 步：准备环境变量和数据目录
 
 先复制示例文件：
@@ -101,6 +127,20 @@ docker logs -f outlook-mail-station
 ```
 
 到这里就算 Docker 部署完成了。
+
+### 补充：强制重新生成部署文件
+
+PowerShell：
+
+```powershell
+.\deploy_ghcr.ps1 -Force
+```
+
+Linux / macOS：
+
+```bash
+FORCE_DEPLOY_FILES=1 bash deploy_ghcr.sh
+```
 
 ## 4. 使用指定 tag 或你自己的仓库
 

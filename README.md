@@ -364,6 +364,18 @@ docker compose -f docker-compose.ghcr.yml up -d
 ./docs/GHCR_DEPLOY.md
 ```
 
+如果你想一键生成部署文件并直接启动，也可以使用：
+
+```powershell
+.\deploy_ghcr.ps1
+```
+
+或：
+
+```bash
+bash deploy_ghcr.sh
+```
+
 ### Linux 部署时建议挂载方式
 
 如果你在服务器上部署，建议显式准备一个持久化目录，例如：
