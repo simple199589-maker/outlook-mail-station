@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/components/accountsidebar.tsx","./src/components/messagedetailmodal.tsx","./src/components/messagelist.tsx","./src/components/shellmodal.tsx","./src/components/toaststack.tsx","./src/lib/api.ts","./src/pages/loginpage.tsx","./src/pages/mailstationpage.tsx","./src/pages/publicsharepage.tsx"],"version":"5.9.3"}

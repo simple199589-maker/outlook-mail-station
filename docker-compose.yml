@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: outlook-mail-station
+    restart: unless-stopped
+    ports:
+      - "8015:8015"
+    env_file:
+      - .env
+    environment:
+      OUTLOOK_MAIL_STATION_DB: ${OUTLOOK_MAIL_STATION_DB:-sqlite:////app/data/outlook_mail_station.db}
+    volumes:
+      # 唯一需要持久化到宿主机硬盘的目录：数据库文件会写到这里
+      - ./data:/app/data

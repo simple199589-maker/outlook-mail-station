@@ -1,0 +1,11 @@
+.venv/
+frontend/node_modules/
+frontend/dist/
+backend/static/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+outlook_mail_station.db
+.git
+.github
