@@ -329,6 +329,41 @@ http://localhost:8015
 ./data
 ```
 
+### 通过 GHCR 直接启动
+
+仓库默认会把镜像发布到：
+
+```text
+ghcr.io/simple199589-maker/outlook-mail-station
+```
+
+如果你想在服务器上直接拉取镜像启动，使用：
+
+```bash
+docker pull ghcr.io/simple199589-maker/outlook-mail-station:latest
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+默认拉取的 tag 是：
+
+```text
+ghcr.io/simple199589-maker/outlook-mail-station:latest
+```
+
+如果你要改成自己的仓库或固定版本，可以覆盖环境变量：
+
+```bash
+export OUTLOOK_MAIL_STATION_IMAGE=ghcr.io/<你的用户名或组织>/outlook-mail-station:v1.0.0
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+完整说明见：
+
+```text
+./docs/GHCR_DEPLOY.md
+```
+
 ### Linux 部署时建议挂载方式
 
 如果你在服务器上部署，建议显式准备一个持久化目录，例如：
@@ -381,5 +416,19 @@ outlook-mail-station\data\outlook_mail_station.db
 推送到 `main` 或 `v*` tag 时，会自动发布镜像到：
 
 ```text
-ghcr.io/<你的GitHub用户名>/outlook-mail-station
+ghcr.io/simple199589-maker/outlook-mail-station
+```
+
+默认分支推送成功后，至少会生成这些标签：
+
+```text
+latest
+main
+sha-<commit>
+```
+
+如果你打了 `v*` tag，还会额外生成对应版本标签，例如：
+
+```text
+v1.0.0
 ```

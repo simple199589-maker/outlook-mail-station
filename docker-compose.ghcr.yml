@@ -1,0 +1,13 @@
+services:
+  app:
+    image: ${OUTLOOK_MAIL_STATION_IMAGE:-ghcr.io/simple199589-maker/outlook-mail-station:latest}
+    container_name: outlook-mail-station
+    restart: unless-stopped
+    ports:
+      - "${OUTLOOK_MAIL_STATION_PORT:-8015}:8015"
+    env_file:
+      - .env
+    environment:
+      OUTLOOK_MAIL_STATION_DB: ${OUTLOOK_MAIL_STATION_DB:-sqlite:////app/data/outlook_mail_station.db}
+    volumes:
+      - ${OUTLOOK_MAIL_STATION_DATA_DIR:-./data}:/app/data
