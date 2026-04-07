@@ -11,7 +11,6 @@ export function MessageList({
   onFolderChange,
   onSelectMessage,
 }: {
-  title: string
   messages: MessageItem[]
   countdown: number
   folder: 'inbox' | 'sent'

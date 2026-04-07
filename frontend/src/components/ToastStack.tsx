@@ -8,7 +8,7 @@ export interface ToastMessage {
 }
 
 /**
- * AI by zb: 渲染左上角堆叠弹出的统一提示消息。
+ * AI by zb: 渲染右下角堆叠弹出的统一提示消息。
  */
 export function ToastStack({ toasts }: { toasts: ToastMessage[] }) {
   if (!toasts.length) return null
@@ -16,8 +16,8 @@ export function ToastStack({ toasts }: { toasts: ToastMessage[] }) {
   return (
     <div className="toast-stack" aria-live="polite" aria-atomic="true">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast ${toast.type}`} role="status">
-          <span className="toast__icon" aria-hidden="true">
+        <div key={toast.id} className={`toast-item is-${toast.type}`} role="status">
+          <span className="toast-item__icon" aria-hidden="true">
             {toast.type === 'success' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m5 12 4.2 4.2L19 6.5" />
@@ -30,7 +30,7 @@ export function ToastStack({ toasts }: { toasts: ToastMessage[] }) {
               </svg>
             )}
           </span>
-          <span className="toast__text">{toast.text}</span>
+          <span className="toast-item__text">{toast.text}</span>
         </div>
       ))}
     </div>

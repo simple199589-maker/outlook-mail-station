@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import { copyText, formatSender, formatTime } from '@/lib/api'
 import { MessageDetail } from '@/types'
 import { ShellModal } from '@/components/ShellModal'
@@ -16,10 +18,34 @@ export function MessageDetailModal({
   onClose: () => void
   onFlash: (type: 'success' | 'error', text: string) => void
 }) {
+  const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle')
+
+  useEffect(() => {
+    setCopyState('idle')
+  }, [open, message?.id])
+
   if (!open || !message) return null
 
   const codeMatch = (message.body_text || message.preview || '').match(/\b(\d{6})\b/)
   const securityCode = codeMatch?.[1] || ''
+  const copyHintText = copyState === 'success' ? '已复制' : copyState === 'error' ? '复制失败，重试' : '点击复制'
+
+  /**
+   * AI by zb: 复制当前邮件中识别到的验证码，并在按钮上反馈结果。
+   */
+  const handleCopySecurityCode = async () => {
+    if (!securityCode) {
+      return
+    }
+    try {
+      await copyText(securityCode)
+      setCopyState('success')
+      onFlash('success', `验证码 ${securityCode} 已复制`)
+    } catch {
+      setCopyState('error')
+      onFlash('error', '复制验证码失败')
+    }
+  }
 
   return (
     <ShellModal
@@ -58,12 +84,12 @@ export function MessageDetailModal({
       {securityCode ? (
         <button
           type="button"
-          className="detail-code-chip"
-          onClick={() => copyText(securityCode).then(() => onFlash('success', `验证码 ${securityCode} 已复制`)).catch(() => onFlash('error', '复制验证码失败'))}
+          className={`detail-code-chip ${copyState === 'success' ? 'is-success' : copyState === 'error' ? 'is-error' : ''}`}
+          onClick={handleCopySecurityCode}
         >
           <span className="detail-code-chip__icon">🔑</span>
           <strong>{securityCode}</strong>
-          <span>点击复制</span>
+          <span className="detail-code-chip__hint" aria-live="polite">{copyHintText}</span>
         </button>
       ) : null}
 

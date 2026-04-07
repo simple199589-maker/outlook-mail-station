@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,7 +18,10 @@ from .routers.accounts import router as accounts_router
 from .routers.messages import router as messages_router
 from .routers.open_api import router as open_api_router
 from .routers.public_share import router as public_share_router
+from .routers.sites import router as sites_router
+from .routers.users import router as users_router
 from .schemas import HealthResponse
+from .services.mail_sync_service import run_active_mailbox_sync_loop
 from .settings import API_PREFIX, APP_NAME, FRONTEND_DIR, STATIC_DIR
 
 
@@ -34,7 +38,13 @@ def _resolve_static_dir() -> Path | None:
 async def lifespan(app: FastAPI):
     """AI by zb: 应用启动时初始化数据库。"""
     init_db()
-    yield
+    stop_event = asyncio.Event()
+    sync_task = asyncio.create_task(run_active_mailbox_sync_loop(stop_event))
+    try:
+        yield
+    finally:
+        stop_event.set()
+        await sync_task
 
 
 app = FastAPI(title=APP_NAME, version="0.1.0", lifespan=lifespan)
@@ -70,6 +80,8 @@ async def admin_auth_middleware(request: Request, call_next):
 app.include_router(admin_auth_router, prefix=API_PREFIX)
 app.include_router(accounts_router, prefix=API_PREFIX)
 app.include_router(messages_router, prefix=API_PREFIX)
+app.include_router(users_router, prefix=API_PREFIX)
+app.include_router(sites_router, prefix=API_PREFIX)
 app.include_router(open_api_router, prefix=API_PREFIX)
 app.include_router(public_share_router, prefix=API_PREFIX)
 

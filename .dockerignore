@@ -2,10 +2,15 @@
 frontend/node_modules/
 frontend/dist/
 backend/static/
+data/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 outlook_mail_station.db
+.env
+tmp_db_*.py
 .git
 .github
+.issues
+.trae

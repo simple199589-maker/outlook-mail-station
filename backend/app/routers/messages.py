@@ -2,28 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from ..database import get_session
 from ..models import MailMessage, OutlookAccount, utcnow
 from ..schemas import MessageDetailResponse, MessageItemResponse, SendMailRequest, SyncResponse
+from ..services.mail_sync_service import sync_account_mailbox
 from ..services.outlook_service import OutlookService
-from ..settings import DEFAULT_SYNC_LIMIT, OPEN_API_SYNC_COOLDOWN_SECONDS
+from ..settings import DEFAULT_SYNC_LIMIT
 
 
 router = APIRouter(tags=["messages"])
-
-
-def _normalize_datetime(value: datetime | None) -> datetime | None:
-    """AI by zb: 将数据库中读出的时间统一归一到 UTC。"""
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
 
 
 def _get_account_or_404(session: Session, account_id: int) -> OutlookAccount:
@@ -50,97 +40,6 @@ def _serialize_message(message: MailMessage) -> MessageItemResponse:
     )
 
 
-def _upsert_message(session: Session, account_id: int, synced) -> None:
-    """AI by zb: 将同步得到的邮件更新到本地缓存表。"""
-    existing = session.exec(select(MailMessage).where(MailMessage.message_key == synced.message_key)).first()
-    if existing:
-        existing.sender_name = synced.sender_name
-        existing.sender_email = synced.sender_email
-        existing.recipient_summary = synced.recipient_summary
-        existing.subject = synced.subject
-        existing.preview = synced.preview
-        existing.body_text = synced.body_text
-        existing.body_html = synced.body_html
-        existing.sent_at = synced.sent_at
-        existing.updated_at = utcnow()
-        session.add(existing)
-        return
-
-    session.add(
-        MailMessage(
-            account_id=account_id,
-            folder=synced.folder,
-            message_key=synced.message_key,
-            remote_uid=synced.remote_uid,
-            internet_message_id=synced.internet_message_id,
-            sender_name=synced.sender_name,
-            sender_email=synced.sender_email,
-            recipient_summary=synced.recipient_summary,
-            subject=synced.subject,
-            preview=synced.preview,
-            body_text=synced.body_text,
-            body_html=synced.body_html,
-            sent_at=synced.sent_at,
-            created_at=utcnow(),
-            updated_at=utcnow(),
-        )
-    )
-
-
-def sync_account_mailbox(session: Session, account: OutlookAccount, limit: int = DEFAULT_SYNC_LIMIT) -> SyncResponse:
-    """AI by zb: 同步指定账号的收件箱与发件箱到本地缓存。"""
-    service = OutlookService(account)
-    folders = service.fetch_mailbox_messages(limit=limit)
-    inbox = folders["inbox"]
-    junk = folders["junk"]
-    sent = folders["sent"]
-
-    for item in inbox:
-        _upsert_message(session, account.id or 0, item)
-    for item in junk:
-        _upsert_message(session, account.id or 0, item)
-    for item in sent:
-        _upsert_message(session, account.id or 0, item)
-
-    next_refresh_token = service.refresh_token_for_storage()
-    if next_refresh_token and next_refresh_token != account.refresh_token:
-        account.refresh_token = next_refresh_token
-
-    account.last_synced_at = utcnow()
-    account.updated_at = utcnow()
-    account.last_error = ""
-    session.add(account)
-    session.commit()
-    session.refresh(account)
-
-    return SyncResponse(
-        account_id=account.id or 0,
-        synced_at=account.last_synced_at,
-        inbox_count=len(inbox) + len(junk),
-        sent_count=len(sent),
-    )
-
-
-def maybe_sync_account_mailbox(
-    session: Session,
-    account: OutlookAccount,
-    *,
-    refresh: bool = True,
-    limit: int = DEFAULT_SYNC_LIMIT,
-) -> SyncResponse | None:
-    """AI by zb: 按需触发邮箱同步，避免同一邮箱被短时间内重复刷新。"""
-    if not refresh:
-        return None
-
-    last_synced = _normalize_datetime(account.last_synced_at)
-    now = utcnow()
-    if last_synced is not None:
-        elapsed = (now - last_synced).total_seconds()
-        if elapsed < OPEN_API_SYNC_COOLDOWN_SECONDS:
-            return None
-    return sync_account_mailbox(session, account, limit=limit)
-
-
 @router.post("/accounts/{account_id}/sync", response_model=SyncResponse)
 def sync_messages(
     account_id: int,
@@ -152,10 +51,6 @@ def sync_messages(
     try:
         return sync_account_mailbox(session, account, limit=limit)
     except Exception as exc:
-        account.last_error = str(exc)
-        account.updated_at = utcnow()
-        session.add(account)
-        session.commit()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

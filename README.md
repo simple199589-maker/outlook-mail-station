@@ -1,33 +1,101 @@
 # Outlook Mail Station
 
-独立 Outlook 邮件站点，用于维护批量导入邮箱、同步收件箱/发件箱、发送邮件与生成临时授权公开链接。
+Outlook Mail Station 是一个面向账号池管理和业务对接的 Outlook 邮件站。
 
-对接文档见：
+它提供三类核心能力：
 
-```text
-./docs/API_INTEGRATION.md
-```
+- 后台管理：用户、站点、邮箱池、邮件查看、发信、分享链接
+- 业务开放接口：基于用户级 API Key 的邮箱消费、查信、分享、按站点回退
+- 公开分享：基于分享 token 的只读访问页
+
+接口说明见 [docs/API_INTEGRATION.md](./docs/API_INTEGRATION.md)。
 
 ## 技术栈
 
-- Python 3.12.10 + `uv`
-- FastAPI + SQLModel + SQLite
+- Python 3.12
+- FastAPI
+- SQLModel + SQLite
 - React + TypeScript + Vite
+
+## 核心模型
+
+### 用户池
+
+- 每个普通用户拥有自己的邮箱池
+- 每个普通用户拥有自己的 API Key
+- 业务开放接口始终绑定到某一个普通用户
+
+### 站点
+
+- 站点由后台维护，使用唯一 `code`
+- 业务系统消费邮箱时必须带 `site_code`
+- 邮箱的消费和回退都按站点维度处理
+
+### 邮箱
+
+- 邮箱归属于某个用户池
+- 邮箱可以同步收件箱、垃圾箱、发件箱
+- 邮箱可以生成公开分享链接
+
+### 公开分享
+
+- 分享链接由单个邮箱生成
+- 公开页通过分享 token 读取邮件内容
+- 同一个邮箱同一时间只保留一条有效分享链接
+
+## 权限模型
+
+### 后台管理接口
+
+- 后台页面和管理接口使用管理员 Bearer Token
+- 用于用户管理、站点管理、邮箱导入、账号池维护
+
+### 业务开放接口
+
+- 业务开放接口统一使用普通用户自己的 API Key
+- 每次请求都会先解析 API Key，再绑定到对应用户池
+- 所有业务开放接口都只允许访问该用户池下的启用邮箱
+
+### 公开分享接口
+
+- 公开分享接口使用分享 token
+- 分享 token 只提供只读访问能力
+
+## 当前开放接口
+
+业务开放接口统一挂在 `/api/open/*`：
+
+- `POST /api/open/random-email`
+- `GET /api/open/mailboxes/{email}/latest`
+- `GET /api/open/mailboxes/{email}/messages`
+- `POST /api/open/mailboxes/{email}/share`
+- `POST /api/open/mailboxes/{email}/share/revoke`
+- `POST /api/open/mailboxes/{email}/sites/{site_code}/release`
+
+公开分享接口统一挂在 `/api/public/*`：
+
+- `GET /api/public/shares/{token}`
+- `POST /api/public/shares/{token}/sync`
+- `GET /api/public/shares/{token}/messages/{message_id}`
 
 ## 快速开始
 
-### 1. 准备 Python
+### 1. 准备环境
 
 ```bash
-pyenv install 3.12.10
-pyenv local 3.12.10
+cp .env.example .env
 uv sync
 ```
+
+至少需要配置：
+
+- `OUTLOOK_MAIL_STATION_ADMIN_PASSWORD`
+- `OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET`
 
 ### 2. 启动后端
 
 ```bash
-uv run python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8015
+uv run python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8015
 ```
 
 Windows 也可以直接使用：
@@ -42,10 +110,10 @@ Windows 也可以直接使用：
 start_backend.bat
 ```
 
-建议先复制环境变量模板：
+后端地址：
 
-```bash
-cp .env.example .env
+```text
+http://localhost:8015
 ```
 
 ### 3. 启动前端开发服务器
@@ -62,12 +130,6 @@ npm run dev
 http://localhost:5174
 ```
 
-后端 API 地址：
-
-```text
-http://localhost:8015
-```
-
 ### 4. 构建前端
 
 ```bash
@@ -76,21 +138,30 @@ npm install
 npm run build
 ```
 
-构建后静态资源会输出到：
+构建产物输出到：
 
 ```text
 ./backend/static
 ```
 
-此时直接运行后端即可访问完整站点：
+构建完成后，直接访问后端地址即可使用完整站点。
 
-```text
-http://localhost:8015
-```
+## 后台能力
+
+- 管理员登录
+- 用户管理
+- 用户 API Key 查看与重置
+- 站点管理
+- 邮箱导入
+- 邮箱池查询、筛选、导出
+- 随机消费 / 手动消费 / 按站点回退
+- 邮件同步与查看
+- SMTP 发信
+- 公开分享链接生成
 
 ## 导入格式
 
-支持两种导入格式：
+后台导入接口支持文本和 JSON 两种格式。
 
 ### 文本格式
 
@@ -112,335 +183,82 @@ example@outlook.com----password----client_id----refresh_token
 ]
 ```
 
-## 默认能力
+## 业务开放接口使用方式
 
-- 左侧邮箱列表与搜索
-- 当前邮箱卡片
-- 收件箱 / 发件箱切换
-- 10 秒自动刷新倒计时
-- Outlook IMAP 同步
-- SMTP 发信
-- 临时授权公开链接
-- 同邮箱仅保留一条最新临时授权，默认有效期 30 天
-- 管理员登录
-- 固定密钥 / 固定 Bearer 的开放 API
-
-## 管理员登录
-
-通过以下环境变量启用：
-
-```text
-OUTLOOK_MAIL_STATION_ADMIN_PASSWORD=你的后台密码
-OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET=你的JWT签名密钥
-```
-
-前端会在访问后台页面时要求管理员登录。
-
-## 开放接口认证
-
-开放接口不入库，直接读取环境变量中的固定密钥：
-
-```text
-OUTLOOK_MAIL_STATION_OPEN_API_KEY=replace-with-fixed-key
-OUTLOOK_MAIL_STATION_OPEN_API_BEARER=replace-with-fixed-bearer
-```
-
-调用时任选一种：
+调用 `/api/open/*` 时，使用普通用户自己的 API Key：
 
 ```http
-X-API-Key: replace-with-fixed-key
+X-API-Key: user-owned-api-key
 ```
 
 或：
 
 ```http
-Authorization: Bearer replace-with-fixed-bearer
+Authorization: Bearer user-owned-api-key
 ```
 
-## 开放接口
+业务系统调用流程通常是：
 
-### 1. 批量导入邮箱
-
-```http
-POST /api/open/import
-```
-
-请求体示例：
-
-```json
-{
-  "batch_code": "batch-20260405",
-  "enabled": true,
-  "data": "demo@outlook.com----password----client_id----refresh_token"
-}
-```
-
-### 2. 随机取邮箱
-
-```http
-POST /api/open/random-email
-```
-
-请求体示例：
-
-```json
-{
-  "domain": "outlook.com",
-  "batch_code": "batch-20260405",
-  "lease_seconds": 1800
-}
-```
-
-### 3. 获取指定邮箱最后一封收件
-
-```http
-GET /api/open/mailboxes/{email}/latest?refresh=true
-```
-
-### 4. 获取指定邮箱邮件列表
-
-```http
-GET /api/open/mailboxes/{email}/messages?refresh=true
-```
-
-支持按时间过滤：
-
-```http
-GET /api/open/mailboxes/{email}/messages?refresh=true&since=2026-04-05T00:00:00+08:00
-```
-
-### 5. 为指定邮箱生成临时授权链接
-
-```http
-POST /api/open/mailboxes/{email}/share
-```
-
-请求体示例：
-
-```json
-{
-  "days": 30
-}
-```
-
-### 6. 手动废止指定邮箱临时授权
-
-```http
-POST /api/open/mailboxes/{email}/share/revoke
-```
-
-### 7. 释放随机取到的邮箱租约
-
-```http
-POST /api/open/mailboxes/{email}/lease/release
-```
+1. 用 `/api/open/random-email` 按站点领取邮箱
+2. 用 `/api/open/mailboxes/{email}/latest` 或 `/messages` 获取邮件
+3. 需要外部查看时，用 `/api/open/mailboxes/{email}/share` 生成分享链接
+4. 业务结束后，用 `/api/open/mailboxes/{email}/sites/{site_code}/release` 回退该站点占用
 
 ## 邮件同步策略
 
-- 不做全量后台轮询
-- 默认在开放接口调用时按需触发同步
-- 同一邮箱在短时间内会复用最近缓存，避免重复 IMAP 拉取
-- 这个时间窗口由 `OUTLOOK_MAIL_STATION_OPEN_API_SYNC_COOLDOWN_SECONDS` 控制
+- 开放接口默认按需同步
+- 收件相关接口优先同步 `inbox + junk`
+- 同一邮箱在冷却时间内优先使用缓存
+- 已被站点占用的活跃邮箱会进行后台轻量预热同步
 
-## Docker
+相关配置：
 
-### 部署清单
-
-部署前请确认这几项：
-
-1. 准备好 `.env`
-2. 准备好宿主机持久化目录 `./data`
-3. 在项目根目录执行 `docker compose up -d --build`
-
-目录建议长这样：
-
-```text
-outlook-mail-station/
-├── .env
-├── docker-compose.yml
-├── Dockerfile
-└── data/
+```env
+OUTLOOK_MAIL_STATION_OPEN_API_SYNC_COOLDOWN_SECONDS=60
+OUTLOOK_MAIL_STATION_ACTIVE_MAILBOX_SYNC_INTERVAL_SECONDS=5
+OUTLOOK_MAIL_STATION_ACTIVE_MAILBOX_SYNC_STALE_SECONDS=8
+OUTLOOK_MAIL_STATION_ACTIVE_MAILBOX_SYNC_LIMIT=30
 ```
 
-### 哪些会挂载到硬盘
+## Docker 部署
 
-当前 `docker-compose.yml` 里，**只有一个目录会挂载到宿主机硬盘**：
-
-```text
-./data  ->  /app/data
-```
-
-用途：
-
-- 存放 SQLite 数据库文件
-- 容器重建后数据仍然保留
-
-如果你使用默认配置，数据库最终会在宿主机这里：
-
-```text
-./data/outlook_mail_station.db
-```
-
-### 哪些不会挂载到硬盘
-
-下面这些内容不会单独挂载：
-
-- 前端静态资源
-  说明：已经在镜像构建时打包进镜像里
-- 后端源码
-  说明：同样已经打进镜像
-- `.env`
-  说明：不是挂载进去，而是通过 `env_file: .env` 在启动时注入成容器环境变量
-
-### `.env` 会不会自动生效
-
-会。
-
-当前 `docker-compose.yml` 已经写了：
-
-```yaml
-env_file:
-  - .env
-```
-
-只要你在项目根目录下有 `.env`，并且在这个目录执行：
+### 本地构建运行
 
 ```bash
 docker compose up -d --build
 ```
 
-Compose 就会自动读取它。
-
-### 本地构建与运行
-
-```bash
-docker compose up -d --build
-```
-
-默认访问：
+默认访问地址：
 
 ```text
 http://localhost:8015
 ```
 
-数据目录：
+### 数据持久化
+
+当前默认挂载目录：
 
 ```text
-./data
+./data:/app/data
 ```
 
-### 通过 GHCR 直接启动
-
-仓库默认会把镜像发布到：
+数据库默认位于：
 
 ```text
-ghcr.io/simple199589-maker/outlook-mail-station
+./data/outlook_mail_station.db
 ```
 
-如果你想在服务器上直接拉取镜像启动，使用：
+### GHCR 部署
 
-```bash
-docker pull ghcr.io/simple199589-maker/outlook-mail-station:latest
-docker compose -f docker-compose.ghcr.yml pull
-docker compose -f docker-compose.ghcr.yml up -d
-```
-
-默认拉取的 tag 是：
-
-```text
-ghcr.io/simple199589-maker/outlook-mail-station:latest
-```
-
-如果你要改成自己的仓库或固定版本，可以覆盖环境变量：
-
-```bash
-export OUTLOOK_MAIL_STATION_IMAGE=ghcr.io/<你的用户名或组织>/outlook-mail-station:v1.0.0
-docker compose -f docker-compose.ghcr.yml up -d
-```
-
-完整说明见：
-
-```text
-./docs/GHCR_DEPLOY.md
-```
-
-如果你想一键生成部署文件并直接启动，也可以使用：
-
-```powershell
-.\deploy_ghcr.ps1
-```
-
-或：
-
-```bash
-bash deploy_ghcr.sh
-```
-
-### Linux 部署时建议挂载方式
-
-如果你在服务器上部署，建议显式准备一个持久化目录，例如：
-
-```text
-/srv/outlook-mail-station/data
-```
-
-然后把 compose 里的挂载改成：
-
-```yaml
-volumes:
-  - /srv/outlook-mail-station/data:/app/data
-```
-
-### Windows 部署时建议挂载方式
-
-如果你在 Windows 上直接部署，保持当前相对路径就够了：
-
-```yaml
-volumes:
-  - ./data:/app/data
-```
-
-这样数据库会落在项目目录下的：
-
-```text
-outlook-mail-station\data\outlook_mail_station.db
-```
-
-### 最小上线要求
-
-最少需要准备这些：
-
-1. `.env`
-   这里至少改掉管理员密码、JWT 密钥、开放接口固定密钥
-2. `./data`
-   这是唯一必须持久化挂载的目录
-3. `8015` 端口
-   确保宿主机没被占用
-
-## GitHub 发布
-
-仓库已包含：
-
-```text
-.github/workflows/docker-publish.yml
-```
-
-推送到 `main` 或 `v*` tag 时，会自动发布镜像到：
+仓库默认镜像：
 
 ```text
 ghcr.io/simple199589-maker/outlook-mail-station
 ```
 
-默认分支推送成功后，至少会生成这些标签：
+完整部署说明见 [docs/GHCR_DEPLOY.md](./docs/GHCR_DEPLOY.md)。
 
-```text
-latest
-main
-sha-<commit>
-```
+## 项目文档
 
-如果你打了 `v*` tag，还会额外生成对应版本标签，例如：
-
-```text
-v1.0.0
-```
+- [API 对接文档](./docs/API_INTEGRATION.md)
+- [GHCR 部署文档](./docs/GHCR_DEPLOY.md)

@@ -101,7 +101,6 @@ export function PublicSharePage() {
       </header>
 
       <MessageList
-        title="公开只读邮箱"
         messages={messages}
         countdown={countdown}
         folder={folder}

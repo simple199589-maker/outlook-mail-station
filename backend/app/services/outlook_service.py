@@ -14,7 +14,7 @@ from email.header import decode_header
 from email.message import EmailMessage
 from email.policy import default as email_default_policy
 from email.utils import getaddresses, parsedate_to_datetime
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional
 
 import httpx
 
@@ -61,6 +61,16 @@ class SyncedMessage:
     sent_at: Optional[datetime]
 
 
+@dataclass
+class FolderSyncResult:
+    """AI by zb: 描述单个文件夹一次同步得到的结果。"""
+
+    folder: str
+    resolved_folder: str
+    messages: list[SyncedMessage]
+    high_water_uid: Optional[int]
+
+
 class OutlookService:
     """AI by zb: 提供 Outlook IMAP 同步与 SMTP 发信能力。"""
 
@@ -78,46 +88,71 @@ class OutlookService:
         folder: str,
         limit: int = 30,
         *,
+        last_uid: int | None = None,
         imap_conn: imaplib.IMAP4_SSL | None = None,
-    ) -> tuple[list[SyncedMessage], str]:
-        """AI by zb: 同步指定文件夹最近若干封邮件。"""
+    ) -> FolderSyncResult:
+        """AI by zb: 同步指定文件夹最近若干封或增量新增邮件。"""
         owns_connection = imap_conn is None
         active_conn = imap_conn
         if active_conn is None:
             active_conn = self._open_imap_connection()
         try:
             resolved_folder = self._select_folder(active_conn, folder)
-            _, data = active_conn.uid("search", None, "ALL")
-            remote_ids = data[0].split() if data and data[0] else []
+            remote_ids, high_water_uid = self._search_folder_message_ids(active_conn, last_uid=last_uid)
             if not remote_ids:
-                return [], resolved_folder
+                return FolderSyncResult(
+                    folder=folder,
+                    resolved_folder=resolved_folder,
+                    messages=[],
+                    high_water_uid=high_water_uid,
+                )
 
             messages: list[SyncedMessage] = []
-            for remote_id in reversed(remote_ids[-limit:]):
+            target_ids = remote_ids if last_uid is not None else remote_ids[-limit:]
+            for remote_id in reversed(target_ids):
                 synced = self._fetch_single_message(active_conn, remote_id, folder)
                 if synced is not None:
                     messages.append(synced)
-            return messages, resolved_folder
+            return FolderSyncResult(
+                folder=folder,
+                resolved_folder=resolved_folder,
+                messages=messages,
+                high_water_uid=high_water_uid,
+            )
         finally:
             if owns_connection and active_conn is not None:
                 self._safe_logout(active_conn)
 
-    def fetch_mailbox_messages(self, limit: int = 30) -> dict[str, list[SyncedMessage]]:
-        """AI by zb: 在单次 IMAP 会话中同步默认邮箱文件夹。"""
-        folders: dict[str, list[SyncedMessage]] = {
-            "inbox": [],
-            "junk": [],
-            "sent": [],
-        }
+    def fetch_mailbox_messages(
+        self,
+        limit: int = 30,
+        *,
+        folders: Iterable[str] | None = None,
+        last_uids: Mapping[str, int | None] | None = None,
+    ) -> dict[str, FolderSyncResult]:
+        """AI by zb: 在单次 IMAP 会话中同步指定邮箱文件夹。"""
+        target_folders = [item for item in (folders or ("inbox", "junk", "sent")) if item in {"inbox", "junk", "sent"}]
+        results: dict[str, FolderSyncResult] = {}
         imap_conn = self._open_imap_connection()
         try:
-            folders["inbox"], _ = self.fetch_folder_messages("inbox", limit=limit, imap_conn=imap_conn)
-            try:
-                folders["junk"], _ = self.fetch_folder_messages("junk", limit=limit, imap_conn=imap_conn)
-            except Exception:
-                folders["junk"] = []
-            folders["sent"], _ = self.fetch_folder_messages("sent", limit=limit, imap_conn=imap_conn)
-            return folders
+            for folder in target_folders:
+                try:
+                    results[folder] = self.fetch_folder_messages(
+                        folder,
+                        limit=limit,
+                        last_uid=(last_uids or {}).get(folder),
+                        imap_conn=imap_conn,
+                    )
+                except Exception:
+                    if folder != "junk":
+                        raise
+                    results[folder] = FolderSyncResult(
+                        folder=folder,
+                        resolved_folder=folder,
+                        messages=[],
+                        high_water_uid=(last_uids or {}).get(folder),
+                    )
+            return results
         finally:
             self._safe_logout(imap_conn)
 
@@ -276,6 +311,37 @@ class OutlookService:
                             return item
         raise RuntimeError(f"未找到可用的 {folder} 文件夹")
 
+    def _search_folder_message_ids(
+        self,
+        imap_conn: imaplib.IMAP4_SSL,
+        *,
+        last_uid: int | None = None,
+    ) -> tuple[list[bytes], int | None]:
+        """AI by zb: 优先按 UID 增量查询远端邮件编号，失败时回退到全量过滤。"""
+        if last_uid is not None and last_uid > 0:
+            try:
+                status, data = imap_conn.uid("search", None, "UID", f"{last_uid + 1}:*")
+                if status == "OK":
+                    remote_ids = data[0].split() if data and data[0] else []
+                    high_water_uid = last_uid
+                    if remote_ids:
+                        high_water_uid = self._parse_uid(remote_ids[-1]) or last_uid
+                    return remote_ids, high_water_uid
+            except Exception:
+                pass
+
+        status, data = imap_conn.uid("search", None, "ALL")
+        remote_ids = data[0].split() if status == "OK" and data and data[0] else []
+        if not remote_ids:
+            return [], last_uid
+
+        high_water_uid = self._parse_uid(remote_ids[-1]) or last_uid
+        if last_uid is None or last_uid <= 0:
+            return remote_ids, high_water_uid
+
+        filtered_ids = [item for item in remote_ids if (self._parse_uid(item) or 0) > last_uid]
+        return filtered_ids, high_water_uid
+
     def _fetch_single_message(
         self,
         imap_conn: imaplib.IMAP4_SSL,
@@ -404,6 +470,21 @@ class OutlookService:
             if match:
                 folders.append(match.group(1))
         return folders
+
+    def _parse_uid(self, value: bytes | str | int | None) -> Optional[int]:
+        """AI by zb: 将 IMAP UID 安全转换成整数，便于增量同步比较。"""
+        if value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        text = value.decode("utf-8", errors="ignore") if isinstance(value, bytes) else str(value)
+        text = text.strip()
+        if not text.isdigit():
+            return None
+        try:
+            return int(text)
+        except Exception:
+            return None
 
     def _decode_header_value(self, value: str) -> str:
         """AI by zb: 安全解码 RFC2047 邮件头。"""

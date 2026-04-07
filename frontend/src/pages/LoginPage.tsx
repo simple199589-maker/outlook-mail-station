@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react'
 
-import { apiFetch, getAdminToken, setAdminToken } from '@/lib/api'
-
+import { getAdminToken, login, setAdminToken } from '@/lib/api'
 
 /**
- * AI by zb: 管理员登录页。
+ * AI by zb: 后台用户登录页。
  */
 export function LoginPage() {
+  const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -20,18 +20,19 @@ export function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!username.trim()) {
+      setError('请输入用户名')
+      return
+    }
     if (!password.trim()) {
-      setError('请输入管理员密码')
+      setError('请输入密码')
       return
     }
 
     setLoading(true)
     setError('')
     try {
-      const data = await apiFetch<{ access_token: string }>('/api/admin/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ password }),
-      })
+      const data = await login({ username, password })
       setAdminToken(data.access_token)
       window.location.replace('/')
     } catch (submitError) {
@@ -45,23 +46,48 @@ export function LoginPage() {
     <div className="login-shell">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="brand-mark">Admin</div>
-        <h1>管理员登录</h1>
-        <p>输入环境变量里配置的后台密码后进入站点。</p>
+        <h1>后台用户登录</h1>
+        <p>使用后台用户名和密码进入站点。</p>
         <label className="login-field">
-          <span>管理员密码</span>
+          <span>用户名</span>
+          <input
+            type="text"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="请输入用户名"
+          />
+        </label>
+        <label className="login-field">
+          <span>密码</span>
           <div className="login-field__input-wrap">
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="请输入管理员密码"
+              placeholder="请输入密码"
+              autoComplete="current-password"
             />
             <button
               className="login-field__toggle"
               type="button"
               onClick={() => setShowPassword((current) => !current)}
+              aria-label={showPassword ? '隐藏密码' : '显示密码'}
+              aria-pressed={showPassword}
+              title={showPassword ? '隐藏密码' : '显示密码'}
             >
-              {showPassword ? '隐藏' : '显示'}
+              {showPassword ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 3l18 18" />
+                  <path d="M10.7 5.1A10.9 10.9 0 0 1 12 5c6.4 0 10 7 10 7a18.7 18.7 0 0 1-3.2 4.2" />
+                  <path d="M6.6 6.6A18.7 18.7 0 0 0 2 12s3.6 7 10 7a11 11 0 0 0 4.3-.8" />
+                  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
             </button>
           </div>
         </label>

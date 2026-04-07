@@ -30,23 +30,9 @@ $jwtBytes = New-Object byte[] 24
 [System.Security.Cryptography.RandomNumberGenerator]::Fill($jwtBytes)
 $defaultJwtSecret = [Convert]::ToHexString($jwtBytes).ToLowerInvariant()
 
-$apiKeyBytes = New-Object byte[] 24
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($apiKeyBytes)
-$defaultApiKey = [Convert]::ToHexString($apiKeyBytes).ToLowerInvariant()
-
 $adminJwtSecret = $env:OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET
 if ([string]::IsNullOrWhiteSpace($adminJwtSecret)) {
     $adminJwtSecret = $defaultJwtSecret
-}
-
-$openApiKey = $env:OUTLOOK_MAIL_STATION_OPEN_API_KEY
-if ([string]::IsNullOrWhiteSpace($openApiKey)) {
-    $openApiKey = $defaultApiKey
-}
-
-$openApiBearer = $env:OUTLOOK_MAIL_STATION_OPEN_API_BEARER
-if ($null -eq $openApiBearer) {
-    $openApiBearer = ""
 }
 
 if ((-not (Test-Path -LiteralPath $envFile)) -or $Force) {
@@ -54,10 +40,7 @@ if ((-not (Test-Path -LiteralPath $envFile)) -or $Force) {
 OUTLOOK_MAIL_STATION_DB=sqlite:////app/data/outlook_mail_station.db
 OUTLOOK_MAIL_STATION_ADMIN_PASSWORD=$adminPassword
 OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET=$adminJwtSecret
-OUTLOOK_MAIL_STATION_OPEN_API_KEY=$openApiKey
-OUTLOOK_MAIL_STATION_OPEN_API_BEARER=$openApiBearer
 OUTLOOK_MAIL_STATION_OPEN_API_SYNC_COOLDOWN_SECONDS=60
-OUTLOOK_MAIL_STATION_OPEN_API_LEASE_SECONDS=1800
 OUTLOOK_MAIL_STATION_AUTO_REFRESH=10
 "@
     Set-Content -Path $envFile -Value $envContent
@@ -104,7 +87,7 @@ Write-Host "[INFO] Data dir: $dataDir"
 if ($createdEnv) {
     Write-Host "[INFO] Created .env with generated defaults."
     Write-Host "[INFO] Admin password: $adminPassword"
-    Write-Host "[INFO] Open API key: $openApiKey"
+    Write-Host "[INFO] User API Key is managed in the admin UI after deployment."
 }
 else {
     Write-Host "[INFO] Reused existing .env"

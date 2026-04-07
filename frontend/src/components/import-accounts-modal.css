@@ -1,0 +1,202 @@
+.shell-modal__body--import-layout {
+  padding-top: 18px;
+}
+
+.import-accounts-modal__header {
+  align-items: flex-start;
+}
+
+.import-accounts-modal__copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.import-accounts-modal__copy h3 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.08;
+}
+
+.import-accounts-modal__copy p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+.import-accounts-modal__meta {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 300px;
+}
+
+.import-accounts-modal__meta > div,
+.import-accounts-modal__panel {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(103, 80, 214, 0.12);
+  background: linear-gradient(135deg, rgba(247, 245, 255, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.import-accounts-modal__meta span,
+.import-accounts-modal__panel p,
+.import-accounts-modal__panel small,
+.import-accounts-modal__result-grid span {
+  color: var(--text-subtle);
+  font-size: var(--font-xs);
+}
+
+.import-accounts-modal__meta strong,
+.import-accounts-modal__panel strong,
+.import-accounts-modal__result-grid strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.import-accounts-modal__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.import-accounts-modal__layout.is-editor-wide {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+}
+
+.import-accounts-modal__layout.is-editor-wide .import-accounts-modal__editor {
+  grid-column: 1 / 2;
+}
+
+.import-accounts-modal__layout.is-editor-wide .import-accounts-modal__side {
+  grid-column: 2 / 3;
+}
+
+.import-accounts-modal__layout.is-editor-wide .import-accounts-modal__result {
+  display: none;
+}
+
+.import-accounts-modal__layout.has-result {
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
+}
+
+.import-accounts-modal__editor,
+.import-accounts-modal__batch-field {
+  display: grid;
+  gap: 10px;
+}
+
+.import-accounts-modal__editor textarea,
+.import-accounts-modal__batch-field input {
+  width: 100%;
+}
+
+.import-accounts-modal__editor,
+.import-accounts-modal__batch-field {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(103, 80, 214, 0.12);
+  background: linear-gradient(135deg, rgba(247, 245, 255, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.import-accounts-modal__editor textarea {
+  min-height: 360px;
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.import-accounts-modal__editor small,
+.import-accounts-modal__batch-field small {
+  color: var(--text-subtle);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+}
+
+.import-accounts-modal__side {
+  display: grid;
+  gap: 14px;
+}
+
+.import-accounts-modal__panel {
+  display: grid;
+  gap: 8px;
+}
+
+.import-accounts-modal__field-label {
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.import-accounts-modal__example {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px dashed rgba(103, 80, 214, 0.2);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.import-accounts-modal__batch-field input {
+  min-height: 52px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.import-accounts-modal__result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.import-accounts-modal__result pre {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(103, 80, 214, 0.1);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .import-accounts-modal__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .import-accounts-modal__meta,
+  .import-accounts-modal__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .import-accounts-modal__meta {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .import-accounts-modal__copy h3 {
+    font-size: 24px;
+  }
+
+  .import-accounts-modal__editor textarea {
+    min-height: 280px;
+  }
+
+  .import-accounts-modal__result-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

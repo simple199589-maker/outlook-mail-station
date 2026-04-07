@@ -82,7 +82,12 @@ mkdir -p data
 
 - `OUTLOOK_MAIL_STATION_ADMIN_PASSWORD`
 - `OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET`
-- `OUTLOOK_MAIL_STATION_OPEN_API_KEY` 或 `OUTLOOK_MAIL_STATION_OPEN_API_BEARER`
+
+开放接口不再使用部署时写死的固定 Key。
+
+- 部署完成后，请先登录后台
+- 在“用户管理 -> 账户管理”中创建普通用户并查看该用户的 API Key
+- 对外系统调用 `/api/open/*` 时，直接使用这个用户自己的 API Key
 
 ### 第 2 步：拉取镜像
 

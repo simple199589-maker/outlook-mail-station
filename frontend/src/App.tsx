@@ -5,6 +5,7 @@ import { getAdminToken } from '@/lib/api'
 import { LoginPage } from '@/pages/LoginPage'
 import { MailStationPage } from '@/pages/MailStationPage'
 import { PublicSharePage } from '@/pages/PublicSharePage'
+import { UserManagementPage } from '@/pages/UserManagementPage'
 
 /**
  * AI by zb: 定义新站点的前端路由入口。
@@ -27,14 +28,17 @@ function ProtectedApp() {
     return <Navigate to="/login" replace />
   }
 
-  return <MailStationPage />
+  return <Routes>
+    <Route path="/" element={<MailStationPage />} />
+    <Route path="/users" element={<UserManagementPage />} />
+  </Routes>
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<ProtectedApp />} />
+        <Route path="/*" element={<ProtectedApp />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/share/:token" element={<PublicSharePage />} />
       </Routes>

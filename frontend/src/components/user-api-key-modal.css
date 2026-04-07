@@ -1,0 +1,83 @@
+.user-api-key-modal {
+  width: min(560px, 100%);
+}
+
+.user-api-key-modal__header {
+  gap: 18px;
+}
+
+.user-api-key-modal__title {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-api-key-modal__title h3 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.user-api-key-modal__title p {
+  margin: 0;
+  color: var(--text-subtle);
+  line-height: 1.6;
+}
+
+.user-api-key-modal__body {
+  display: grid;
+  gap: 16px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.user-api-key-modal__intro,
+.user-api-key-modal__field {
+  display: grid;
+  gap: 6px;
+}
+
+.user-api-key-modal__intro {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(112, 88, 255, 0.12);
+  background: linear-gradient(135deg, rgba(112, 88, 255, 0.08), rgba(255, 255, 255, 0.96));
+}
+
+.user-api-key-modal__intro strong,
+.user-api-key-modal__field > span {
+  color: var(--text-main);
+  font-size: var(--font-sm);
+  font-weight: 700;
+}
+
+.user-api-key-modal__intro span,
+.user-api-key-modal__field small {
+  color: var(--text-subtle);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+}
+
+.user-api-key-modal__field input {
+  height: 44px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+}
+
+.user-api-key-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .user-api-key-modal__title h3 {
+    font-size: 22px;
+  }
+
+  .user-api-key-modal__footer > button {
+    width: 100%;
+  }
+}

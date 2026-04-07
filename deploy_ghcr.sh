@@ -22,18 +22,13 @@ mkdir -p "$DATA_DIR"
 
 ADMIN_PASSWORD="${OUTLOOK_MAIL_STATION_ADMIN_PASSWORD:-admin-$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')}"
 ADMIN_JWT_SECRET="${OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET:-$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')}"
-OPEN_API_KEY="${OUTLOOK_MAIL_STATION_OPEN_API_KEY:-$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')}"
-OPEN_API_BEARER="${OUTLOOK_MAIL_STATION_OPEN_API_BEARER:-}"
 
 if [ ! -f "$ENV_FILE" ] || [ "$FORCE" = "1" ]; then
   cat > "$ENV_FILE" <<EOF
 OUTLOOK_MAIL_STATION_DB=sqlite:////app/data/outlook_mail_station.db
 OUTLOOK_MAIL_STATION_ADMIN_PASSWORD=$ADMIN_PASSWORD
 OUTLOOK_MAIL_STATION_ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET
-OUTLOOK_MAIL_STATION_OPEN_API_KEY=$OPEN_API_KEY
-OUTLOOK_MAIL_STATION_OPEN_API_BEARER=$OPEN_API_BEARER
 OUTLOOK_MAIL_STATION_OPEN_API_SYNC_COOLDOWN_SECONDS=60
-OUTLOOK_MAIL_STATION_OPEN_API_LEASE_SECONDS=1800
 OUTLOOK_MAIL_STATION_AUTO_REFRESH=10
 EOF
   CREATED_ENV=1
@@ -76,7 +71,7 @@ echo "[INFO] Data dir: $DATA_DIR"
 if [ "$CREATED_ENV" = "1" ]; then
   echo "[INFO] Created .env with generated defaults."
   echo "[INFO] Admin password: $ADMIN_PASSWORD"
-  echo "[INFO] Open API key: $OPEN_API_KEY"
+  echo "[INFO] User API Key is managed in the admin UI after deployment."
 else
   echo "[INFO] Reused existing .env"
 fi

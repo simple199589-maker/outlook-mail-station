@@ -11,9 +11,11 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..models import MailMessage, OutlookAccount, ShareToken, utcnow
 from ..schemas import MessageDetailResponse, PublicShareResponse, ShareCreateRequest, ShareCreateResponse
+from ..services.mail_sync_service import sync_account_mailbox
+from ..services.site_usage_service import load_site_map
 from ..settings import DEFAULT_SHARE_DAYS
-from .accounts import _build_account_detail
-from .messages import _serialize_message, sync_account_mailbox
+from .accounts import _load_owner_map, _serialize_detail
+from .messages import _serialize_message
 
 
 router = APIRouter(tags=["public-share"])
@@ -61,8 +63,10 @@ def _build_public_payload(session: Session, account: OutlookAccount, share: Shar
         .where(MailMessage.folder == "sent")
         .order_by(MailMessage.sent_at.desc(), MailMessage.updated_at.desc())
     ).all()
+    owner_map = _load_owner_map(session)
+    site_map = load_site_map(session)
     return PublicShareResponse(
-        account=_build_account_detail(session, account),
+        account=_serialize_detail(session, account, owner_map, site_map),
         inbox=[_serialize_message(item) for item in inbox],
         sent=[_serialize_message(item) for item in sent],
         expires_at=share.expires_at,
