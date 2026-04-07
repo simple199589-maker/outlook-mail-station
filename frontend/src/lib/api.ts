@@ -75,13 +75,20 @@ export async function openApiFetch<T>(path: string, apiKey: string, init: Reques
 }
 
 /**
- * AI by zb: 将时间值格式化为本地可读字符串。
+ * AI by zb: 将 UTC 时间统一格式化为北京时间。
  */
 export function formatTime(value?: string | null) {
   if (!value) {
     return '未同步'
   }
-  const date = new Date(value)
+  const raw = value.trim()
+  const hasTimezone = /(?:[zZ]|[+\-]\d{2}:\d{2})$/.test(raw)
+  const normalized = hasTimezone
+    ? raw
+    : raw.includes('T')
+      ? `${raw}Z`
+      : `${raw.replace(' ', 'T')}Z`
+  const date = new Date(normalized)
   if (Number.isNaN(date.getTime())) {
     return value
   }
@@ -91,6 +98,7 @@ export function formatTime(value?: string | null) {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Shanghai',
   }).format(date)
 }
 
