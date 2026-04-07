@@ -242,7 +242,7 @@ def _collect_visible_accounts(
         stmt = stmt.where(OutlookAccount.email.contains(keyword.strip()))
     if batch_code.strip():
         stmt = stmt.where(OutlookAccount.batch_code == batch_code.strip())
-    stmt = stmt.order_by(OutlookAccount.is_pinned.desc(), OutlookAccount.updated_at.desc(), OutlookAccount.id.desc())
+    stmt = stmt.order_by(OutlookAccount.is_pinned.desc(), OutlookAccount.pinned_at.desc(), OutlookAccount.id.asc())
 
     items: list[AccountListItem] = []
     for account in list(session.exec(stmt).all()):

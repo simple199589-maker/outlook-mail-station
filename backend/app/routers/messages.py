@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..models import MailMessage, OutlookAccount, utcnow
 from ..schemas import MessageDetailResponse, MessageItemResponse, SendMailRequest, SyncResponse
+from ..services.mail_sync_service import _message_matches_account_email
 from ..services.mail_sync_service import sync_account_mailbox
 from ..services.outlook_service import OutlookService
 from ..settings import DEFAULT_SYNC_LIMIT
@@ -71,6 +72,7 @@ def list_messages(
         .where(MailMessage.folder.in_(folders))
         .order_by(MailMessage.sent_at.desc(), MailMessage.updated_at.desc())
     ).all()
+    items = [item for item in items if _message_matches_account_email(account.email, item.recipient_summary, item.folder)]
     return [_serialize_message(item) for item in items]
 
 
@@ -80,6 +82,31 @@ def get_message(message_id: int, session: Session = Depends(get_session)):
     message = session.get(MailMessage, message_id)
     if not message:
         raise HTTPException(status_code=404, detail="邮件不存在")
+    return MessageDetailResponse(
+        id=message.id or 0,
+        folder=message.folder,
+        subject=message.subject,
+        sender_name=message.sender_name,
+        sender_email=message.sender_email,
+        recipient_summary=message.recipient_summary,
+        preview=message.preview,
+        sent_at=message.sent_at,
+        body_text=message.body_text,
+        body_html=message.body_html,
+    )
+
+
+@router.get("/accounts/{account_id}/messages/{message_id}", response_model=MessageDetailResponse)
+def get_account_message(
+    account_id: int,
+    message_id: int,
+    session: Session = Depends(get_session),
+):
+    """AI by zb: 返回指定邮箱下某封邮件的完整详情，并校验归属关系。"""
+    account = _get_account_or_404(session, account_id)
+    message = session.get(MailMessage, message_id)
+    if not message or message.account_id != account_id or not _message_matches_account_email(account.email, message.recipient_summary, message.folder):
+        raise HTTPException(status_code=404, detail="邮件不存在或不属于当前邮箱")
     return MessageDetailResponse(
         id=message.id or 0,
         folder=message.folder,

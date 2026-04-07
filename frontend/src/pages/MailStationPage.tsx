@@ -578,7 +578,7 @@ export function MailStationPage() {
     const list = await apiFetch<MessageItem[]>(`/api/accounts/${accountId}/messages?folder=${targetFolder}`)
     setMessages(list)
     if (preserveMessageId && list.some((item) => item.id === preserveMessageId)) {
-      const current = await apiFetch<MessageDetail>(`/api/messages/${preserveMessageId}`)
+      const current = await apiFetch<MessageDetail>(`/api/accounts/${accountId}/messages/${preserveMessageId}`)
       setSelectedMessage(current)
       return
     }
@@ -590,7 +590,10 @@ export function MailStationPage() {
    * AI by zb: 打开单封邮件详情。
    */
   const openMessage = async (messageId: number) => {
-    const current = await apiFetch<MessageDetail>(`/api/messages/${messageId}`)
+    if (!selectedId) {
+      return
+    }
+    const current = await apiFetch<MessageDetail>(`/api/accounts/${selectedId}/messages/${messageId}`)
     setSelectedMessage(current)
     setMessageOpen(true)
   }
@@ -901,6 +904,10 @@ export function MailStationPage() {
     setBusyAction('switch')
     try {
       setSelectedId(accountId)
+      setDetail(null)
+      setMessages([])
+      setSelectedMessage(null)
+      setMessageOpen(false)
       await refreshCurrentMailboxView(accountId)
       setCountdown(AUTO_REFRESH_SECONDS)
     } catch (error) {

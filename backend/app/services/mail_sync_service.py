@@ -6,6 +6,7 @@ import asyncio
 import logging
 import threading
 from datetime import datetime, timezone
+from email.utils import getaddresses
 from typing import Iterable, Sequence
 
 from sqlmodel import Session, select
@@ -118,6 +119,37 @@ def _upsert_message(session: Session, account_id: int, synced) -> None:
     )
 
 
+def _message_matches_account_email(account_email: str, recipient_summary: str, folder: str) -> bool:
+    """AI by zb: 判断邮件收件人是否与当前账号邮箱一致，用于过滤明显串号邮件。"""
+    if folder == "sent":
+        return True
+    summary = str(recipient_summary or "").strip()
+    if not summary:
+        return True
+    normalized_email = str(account_email or "").strip().lower()
+    if not normalized_email:
+        return True
+    if normalized_email in summary.lower():
+        return True
+    addresses = [address.strip().lower() for _, address in getaddresses([summary]) if address.strip()]
+    return normalized_email in addresses
+
+
+def _cleanup_mismatched_cached_messages(session: Session, account: OutlookAccount, folders: Sequence[str]) -> None:
+    """AI by zb: 清理当前账号下收件人与账号邮箱明显不一致的历史缓存邮件。"""
+    if account.id is None:
+        return
+    items = session.exec(
+        select(MailMessage)
+        .where(MailMessage.account_id == account.id)
+        .where(MailMessage.folder.in_(list(folders)))
+    ).all()
+    for item in items:
+        if _message_matches_account_email(account.email, item.recipient_summary, item.folder):
+            continue
+        session.delete(item)
+
+
 def _has_cached_messages(session: Session, account_id: int, folders: Sequence[str]) -> bool:
     """AI by zb: 判断指定邮箱在目标文件夹中是否已有可回退的缓存邮件。"""
     return (
@@ -164,8 +196,19 @@ def _sync_account_mailbox_locked(
         if result is None:
             continue
         for item in result.messages:
+            if not _message_matches_account_email(account.email, item.recipient_summary, item.folder):
+                LOGGER.warning(
+                    "跳过疑似串号邮件: account=%s folder=%s recipient=%s subject=%s",
+                    account.email,
+                    item.folder,
+                    item.recipient_summary,
+                    item.subject,
+                )
+                continue
             _upsert_message(session, account.id, item)
         _set_folder_last_uid(account, folder, result.high_water_uid)
+
+    _cleanup_mismatched_cached_messages(session, account, folders)
 
     next_refresh_token = service.refresh_token_for_storage()
     if next_refresh_token and next_refresh_token != account.refresh_token:

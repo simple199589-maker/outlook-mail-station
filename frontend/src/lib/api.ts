@@ -411,7 +411,7 @@ export function fetchMessages(accountId: number, folder: 'inbox' | 'sent') {
  * AI by zb: 获取指定邮件详情。
  */
 export function fetchMessageDetail(_accountId: number, messageId: number) {
-  return apiFetch<MessageDetail>(`/api/messages/${messageId}`)
+  return apiFetch<MessageDetail>(`/api/accounts/${_accountId}/messages/${messageId}`)
 }
 
 /**
