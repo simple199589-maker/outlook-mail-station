@@ -62,7 +62,7 @@ def list_messages(
     session: Session = Depends(get_session),
 ):
     """AI by zb: 返回指定邮箱某个文件夹下的本地缓存邮件列表。"""
-    _get_account_or_404(session, account_id)
+    account = _get_account_or_404(session, account_id)
     folders = [folder]
     if folder == "inbox":
         folders.append("junk")
